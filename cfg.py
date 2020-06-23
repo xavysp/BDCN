@@ -26,20 +26,24 @@ config = {
     'MulticueBoundaries': {'data_root': 'path_to/multicue/',
                            'data_lst': 'train_boundaries_aug%d.lst',
                            'mean_bgr': [104.00699, 116.66877, 122.67892],
-                           'yita': 0.4}
+                           'yita': 0.4},
+    'BIPED': {'data_root': '/opt/dataset/BIPED/edges/',
+                           'data_lst': 'train_rgb.lst',
+                           'mean_bgr': [104.00699, 116.66877, 122.67892],
+                           'yita': 0.3}
 }
 
 config_test = {
-    'bsds500': {'data_root': 'path_to/bsds500/BSR/BSDS500/data/',
+    'BSDS': {'data_root': '/opt/dataset/BSDS/',
                 'data_lst': 'test_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
                 'yita': 0.5},
-    'bsds500_val': {'data_root': 'path_to/bsds500/BSR/BSDS500/data/',
-                'data_lst': 'val_pair.lst',
+    'BSDS300': {'data_root': '/opt/dataset/BSDS300/',
+                'data_lst': 'test_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
                 'yita': 0.5},
-    'pascal_context': {'data_root': 'path_to/bsds500/PASCAL/',
-                'data_lst': 'voc_test.txt',
+    'PASCAL': {'data_root': '/opt/dataset/PASCAL/',
+                'data_lst': 'test_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
                 'yita': 0.3},
     'pascal_context_journal_val': {'data_root': 'path_to/bsds500/PASCAL/',
@@ -50,19 +54,32 @@ config_test = {
                    'data_lst': 'hha-test.lst',
                    'mean_bgr': [109.92, 88.24, 127.42],
                    'yita': 0.5},
-    'NYUDv2_RGB': {'data_root': 'path_to/NYUD/',
-                   'data_lst': 'image-test.lst',
+    'NYUD': {'data_root': '/opt/dataset/NYUD/',
+                   'data_lst': 'test_pair.lst',
                    'mean_bgr': [104.00699, 116.66877, 122.67892],
                    'yita': 0.5},
-    'MulticueEdges': {'data_root': 'path_to/multicue/',
-                      'data_lst': 'test%d.lst',
+    'MULTICUE': {'data_root':'/opt/dataset/MULTICUE/',
+                      'data_lst': 'test_pair.lst',
                       'mean_bgr': [104.00699, 116.66877, 122.67892],
                       'yita': 0.3},
     'MulticueBoundaries': {'data_root': 'path_to/multicue/',
                            'data_lst': 'test%d.lst',
                            'mean_bgr': [104.00699, 116.66877, 122.67892],
-                           'yita': 0.4}
+                           'yita': 0.4},
+    'BIPED': {'data_root': '/opt/dataset/BIPED/edges/',
+                           'data_lst': 'test_rgb.lst',
+                           'mean_bgr': [104.00699, 116.66877, 122.67892],
+                           'yita': 0.5},
+    'CID': {'data_root': '/opt/dataset/CID/',
+                           'data_lst': 'test_pair.lst',
+                           'mean_bgr': [104.00699, 116.66877, 122.67892],
+                           'yita': 0.5},
+    'DCD': {'data_root': '/opt/dataset/DCD/',
+                           'data_lst': 'test_pair.lst',
+                           'mean_bgr': [104.00699, 116.66877, 122.67892],
+                           'yita': 0.5}
+
 }
 
 if __name__ == '__main__':
-    print config.keys()
+    print (config.keys())

@@ -13,72 +13,93 @@ import bdcn
 from datasets.dataset import Data
 import argparse
 import cfg
-from matplotlib import pyplot as plt
 
 def sigmoid(x):
     return 1./(1+np.exp(np.array(-1.*x)))
 
 
-def test(model, args):
-    test_root = cfg.config_test[args.dataset]['data_root']
-    test_lst = cfg.config_test[args.dataset]['data_lst']
+def test(model, args, running_on='cpu'):
+
+    test_root = cfg.config_test[args.test_data]['data_root']
+    test_lst = cfg.config_test[args.test_data]['data_lst']
     test_name_lst = os.path.join(test_root, 'voc_valtest.txt')
     # test_name_lst = os.path.join(test_root, 'test_id.txt')
-    if 'Multicue' in args.dataset:
-        test_lst = test_lst % args.k
-        test_name_lst = os.path.join(test_root, 'test%d_id.txt'%args.k)
-    mean_bgr = np.array(cfg.config_test[args.dataset]['mean_bgr'])
-    test_img = Data(test_root, test_lst, mean_bgr=mean_bgr)
+    # if 'Multicue' in args.test_data:
+    #     test_lst = test_lst % args.k
+    #     test_name_lst = os.path.join(test_root, 'test%d_id.txt'%args.k)
+    mean_bgr = np.array(cfg.config_test[args.test_data]['mean_bgr'])
+    test_img = Data(test_root, test_lst, mean_bgr=mean_bgr,is_train=False,dataset_name=args.test_data)
     testloader = torch.utils.data.DataLoader(
         test_img, batch_size=1, shuffle=False, num_workers=8)
-    nm = np.loadtxt(test_name_lst, dtype=str)
-    print(len(testloader), len(nm))
-    assert len(testloader) == len(nm)
+    # nm = np.loadtxt(test_name_lst, dtype=str)
+    # print(len(testloader), len(nm))
+    assert len(test_img ) >0
     save_res = True
-    save_dir = args.res_dir
-    if not os.path.exists(save_dir):
-        os.mkdir(save_dir)
-    if args.cuda:
+    base_dir = args.res_dir
+    dataset_save_dir = os.path.join('edges',args.model_name+'_'+args.train_data+str(2)+args.test_data)
+
+    save_dir = os.path.join(base_dir,dataset_save_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    if running_on.__str__()=='gpu':
         model.cuda()
     model.eval()
     data_iter = iter(testloader)
     iter_per_epoch = len(testloader)
     start_time = time.time()
-    all_t = 0
-    for i, (data, _) in enumerate(testloader):
-        if args.cuda:
-            data = data.cuda()
-        data = Variable(data, volatile=True)
-        tm = time.time()
-        out = model(data)
-        fuse = F.sigmoid(out[-1]).cpu().data.numpy()[0, 0, :, :]
-        if not os.path.exists(os.path.join(save_dir, 'fuse')):
-            os.mkdir(os.path.join(save_dir, 'fuse'))
-        cv2.imwrite(os.path.join(save_dir, 'fuse', '%s.png'%nm[i]), 255-fuse*255)
-        all_t += time.time() - tm
-    print all_t
-    print 'Overall Time use: ', time.time() - start_time
+    all_t = []
+    with torch.no_grad():
+        for i, (data, _) in enumerate(testloader):
+
+            if running_on.__str__()=='gpu' or running_on.__str__()=='cuda':
+                data = data.cuda()
+            data = Variable(data)
+            tm = time.time()
+            out = model(data)
+            fuse = torch.sigmoid(out[-1]).cpu().data.numpy()[0, 0, :, :]
+            if not os.path.exists(os.path.join(save_dir, 'pred')):
+                os.mkdir(os.path.join(save_dir, 'pred'))
+            name = testloader.dataset.images_name[i]
+            cv2.imwrite(os.path.join(save_dir, 'pred', '%s.png'%name), np.uint8(255-fuse*255))
+            all_t.append(time.time() - tm)
+            print('Done: ',name,'in ', i+1)
+
+    all_t = np.array(all_t)
+    print (all_t.sum())
+    print ('Overall Time use: ', time.time() - start_time)
+    print ('Average time per image: ', all_t.mean())
+    print("+++ Testing on {} data done, saved in: {}".format(args.test_data, save_dir), " +++")
 
 def main():
     import time
-    print time.localtime()
+    print (time.localtime())
     args = parse_args()
+
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    model = bdcn.BDCN()
-    model.load_state_dict(torch.load('%s' % (args.model)))
-    test(model, args)
+    device = torch.device('cpu' if torch.cuda.device_count() == 0 else 'cuda')
+    # model = bdcn.BDCN()
+    model = bdcn.BDCN().to(device)
+    model.load_state_dict(torch.load('%s' % (args.model),map_location=device))
+    test(model, args, running_on=device)
 
 def parse_args():
     parser = argparse.ArgumentParser('test BDCN')
-    parser.add_argument('-d', '--dataset', type=str, choices=cfg.config_test.keys(),
-        default='bsds500', help='The dataset to train')
-    parser.add_argument('-c', '--cuda', action='store_true',
-        help='whether use gpu to train network')
+    parser.add_argument('-d', '--model_name', type=str,
+                        default='BDCN', help='model name')
+    parser.add_argument('--train_data', type=str,
+        default='BIPED', help='Dataset used 4 training')
+    parser.add_argument('--test_data', type=str,
+                        default='CID', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
+    parser.add_argument('--cuda', type=bool, default=True,
+                        help='whether use gpu to train network')
+    # parser.add_argument('-c', '--cuda', action='store_true',
+    #     help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
-    parser.add_argument('-m', '--model', type=str, default='params/bdcn_final.pth',
-        help='the model to test')
-    parser.add_argument('--res-dir', type=str, default='result',
+    parser.add_argument('-m', '--model', type=str, default='params/bdcn_35000.pth',
+        help='the model to test') # 'params/bdcn_3000.pth' 'params/bdcn_6000.pth' 'params/bdcn_pretrained_on_bsds500.pth'
+    # 'params/bdcn_8000.pth'
+    parser.add_argument('--res_dir', type=str, default='results',
         help='the dir to store result')
     parser.add_argument('-k', type=int, default=1,
         help='the k-th split set of multicue')

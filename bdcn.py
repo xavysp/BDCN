@@ -196,7 +196,7 @@ class BDCN(nn.Module):
                 if 'bias' in name:
                     param.zero_()
                 else:
-                    nn.init.constant(param, 0.080)
+                    nn.init.constant_(param, 0.080)
             else:
                 if logger:
                     logger.info('init params %s ' % name)
@@ -211,6 +211,6 @@ if __name__ == '__main__':
     a=torch.rand((2,3,100,100))
     a=torch.autograd.Variable(a)
     for x in model(a):
-        print x.data.shape
+        print(x.data.shape)
     # for name, param in model.state_dict().items():
     #     print name, param
