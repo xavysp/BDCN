@@ -12,6 +12,7 @@ import sys
 import bdcn
 from datasets.dataset import Data
 from datasets.utls import visualize_result
+from xsploss import xavy_loss, cross_entropy_loss2d, _cross_entropy_loss2d, bdcn_loss2d
 
 import cfg
 import log
@@ -25,58 +26,6 @@ def adjust_learning_rate(optimizer, steps, step_size, gamma=0.1, logger=None):
         param_group['lr'] = param_group['lr'] * gamma
         if logger:
             print('%s: %s' % (param_group['name'], param_group['lr']))
-
-def _cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
-    """
-    :param inputs: inputs is a 4 dimensional data nx1xhxw
-    :param targets: targets is a 3 dimensional data nx1xhxw
-    :return:
-    """
-    mask = (targets > 0.).float()
-    b, c, h, w = mask.shape
-    pos = torch.sum(mask, dim=[1, 2, 3], keepdim=True).float()
-    weight = torch.zeros_like(mask)  # Shape: [b,].
-    neg = c * h * w - pos
-    weight.masked_scatter_(targets > 0.,
-                           torch.ones_like(targets) * (neg * 1. / (pos + neg)))
-    weight.masked_scatter_(targets <= 0.,
-                           torch.ones_like(targets) * (pos * balance / (pos + neg)))
-    # weights[i, t == 1] = neg * 1. / valid
-    # weights[i, t == 0] = pos * balance / valid
-    # weights = torch.Tensor(weights)
-    if cuda:
-        weight = weight.cuda()
-    inputs = torch.sigmoid(inputs)
-    # loss = nn.BCELoss(weight, size_average=False)(inputs, targets)
-    loss = nn.BCELoss(weight, reduction='sum')(inputs, targets)
-    # loss = F.binary_cross_entropy(inputs, targets,weight)
-    # loss = F.binary_cross_entropy_with_logits(inputs, targets, weight=weight)
-    return loss
-
-
-def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
-    """
-    :param inputs: inputs is a 4 dimensional data nx1xhxw
-    :param targets: targets is a 3 dimensional data nx1xhxw
-    :return:
-    """
-    n, c, h, w = inputs.size()
-    # print(cuda)
-    weights = np.zeros((n, c, h, w))
-    for i in range(n):
-        t = targets[i, :, :, :].cpu().data.numpy()
-        pos = (t == 1).sum()
-        neg = (t == 0).sum()
-        valid = neg + pos
-        weights[i, t == 1] = neg * 1. / valid
-        weights[i, t == 0] = pos * balance / valid
-    weights = torch.Tensor(weights)
-    if cuda:
-        weights = weights.cuda()
-    inputs = torch.sigmoid(inputs)
-    # loss = nn.BCELoss(weights, size_average=False)(inputs, targets)
-    loss = nn.BCELoss(weights, reduction='sum')(inputs, targets)
-    return loss
 
 def train(model, args, device='gpu'):
     # if args.dataset.lower()=='ssmihd':
@@ -140,6 +89,10 @@ def train(model, args, device='gpu'):
                 params += [{'params': v, 'lr': base_lr*0.002, 'weight_decay': weight_decay*0, 'name': key}]
     optimizer = torch.optim.SGD(params, momentum=args.momentum,
         lr=args.base_lr, weight_decay=args.weight_decay)
+    # criterion = _cross_entropy_loss2d
+    criterion = cross_entropy_loss2d
+    # criterion = bdcn_loss2d
+    # criterion = xavy_loss()
     start_step = 0
     mean_loss = []
     cur = 0
@@ -168,6 +121,7 @@ def train(model, args, device='gpu'):
     # visualize training
     visu_res = 'results/training'
     os.makedirs(visu_res,exist_ok=True)
+    l_weights = [0.5, 0.5, 0.5,0.5, 0.5, 0.5,0.5, 0.5, 0.5,0.5, 1.1]
     for step in range(start_step, args.max_iter + 1):
         optimizer.zero_grad()
         batch_loss = 0
@@ -184,9 +138,10 @@ def train(model, args, device='gpu'):
             images, labels = Variable(images), Variable(labels)
             out = model(images)
             # loss = 0
-            for k in range(10):
-                loss += args.side_weight*cross_entropy_loss2d(out[k], labels, args.cuda, args.balance)/batch_size
-            loss += args.fuse_weight*cross_entropy_loss2d(out[-1], labels, args.cuda, args.balance)/batch_size
+            loss = sum([criterion(preds, labels,l_w, args.cuda) for preds, l_w in zip(out, l_weights)])  # BDCN
+            # for k in range(10):
+            #     loss += args.side_weight*cross_entropy_loss2d(out[k], labels, args.cuda, args.balance)/batch_size
+            # loss += args.fuse_weight*cross_entropy_loss2d(out[-1], labels, args.cuda, args.balance)/batch_size
             loss.backward()
             # batch_loss += loss.data[0]
             batch_loss += loss.cpu().detach().numpy()
@@ -220,6 +175,9 @@ def train(model, args, device='gpu'):
                 tmp = torch.sigmoid(tmp)
                 tmp = tmp.cpu().detach().numpy()
                 res_data.append(tmp)
+                # print('max', tmp.max())
+                # print('min', tmp.min())
+                # print('std', tmp.std())
             vis_imgs = visualize_result(res_data, arg=args)
             cv.imwrite(os.path.join(visu_res, 'curr_result.png'), vis_imgs)
             del tmp, res_data
@@ -249,6 +207,8 @@ def main():
     train(model, args, device =device)
 
 def parse_args():
+
+    use_cuda = False if torch.cuda.device_count() == 0 else True
     parser = argparse.ArgumentParser(description='Train BDCN for different args')
     parser.add_argument('-d', '--dataset', type=str, choices=cfg.config.keys(),
         default='BIPED', help='The dataset to train') # cfg.config.keys()
@@ -260,7 +220,7 @@ def parse_args():
         help='the momentum')
     # parser.add_argument('-c', '--cuda', action='store_true',
     #     help='whether use gpu to train network')
-    parser.add_argument('--cuda', type=bool, default=True,
+    parser.add_argument('--cuda', type=bool, default=use_cuda,
                         help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
@@ -268,7 +228,7 @@ def parse_args():
         help='the weight_decay of net')
     parser.add_argument('-r', '--resume', type=str, default=None,
         help='whether resume from some, default is None') # before 'params/bdcn_20000.pth.tar'
-    parser.add_argument('--use_prev_trained', type=bool, default=True,
+    parser.add_argument('--use_prev_trained', type=bool, default=False,
                         help='Use previous trained weights, default False')
     parser.add_argument('-p', '--pretrain', type=str, default='datasets/vgg16.pth',
         help='init net from pretrained model default is None') # vgg16 pretrained data: 'datasets/vgg16.pth' else None
@@ -311,5 +271,4 @@ def parse_args():
 
 if __name__ == '__main__':
     main()
-
 

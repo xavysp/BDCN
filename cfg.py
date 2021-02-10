@@ -1,5 +1,5 @@
 config = {
-    'bsds500': {'data_root': 'path_to/bsds500/HED-BSDS/',
+    'BSDS': {'data_root': '/opt/dataset/BSDS/',
                 'data_lst': 'train_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
                 'yita': 0.5},
@@ -46,6 +46,11 @@ config_test = {
                 'data_lst': 'test_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
                 'yita': 0.3},
+    'CLASSIC': {'data_root': 'data',
+                'data_lst': None,
+                'mean_bgr': [104.00699, 116.66877, 122.67892],
+                'yita': 0.5},
+
     'pascal_context_journal_val': {'data_root': 'path_to/bsds500/PASCAL/',
                 'data_lst': 'voc_validation_pair.lst',
                 'mean_bgr': [104.00699, 116.66877, 122.67892],
