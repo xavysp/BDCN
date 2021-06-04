@@ -54,10 +54,10 @@ def test(model, args, running_on='cpu'):
             # data,_= test_data if len(test_data)>1 else [test_data,None]
             if running_on.__str__()=='gpu' or running_on.__str__()=='cuda':
                 data = data.cuda()
-            data = Variable(data)
+            # data = Variable(data)
             tm = time.time()
             out = model(data)
-            fuse = torch.sigmoid(out[-1]).cpu().data.numpy()[0, 0, :, :]
+            fuse = torch.sigmoid(out[-1]).detach().cpu().data.numpy()[0, 0, :, :]
             if not os.path.exists(os.path.join(save_dir, 'pred')):
                 os.mkdir(os.path.join(save_dir, 'pred'))
             name = testloader.dataset.images_name[i]
@@ -68,6 +68,7 @@ def test(model, args, running_on='cpu'):
             cv2.imwrite(os.path.join(save_dir, 'pred', '%s.png'%name), np.uint8(255-fuse*255))
             all_t.append(time.time() - tm)
             print('Done: ',name,'in ', i+1, 'shape:', fuse.shape)
+            torch.cuda.empty_cache()
 
     all_t = np.array(all_t)
     print (all_t.sum())
@@ -92,17 +93,17 @@ def parse_args():
     parser.add_argument('-d', '--model_name', type=str,
                         default='BDCN', help='model name')
     parser.add_argument('--train_data', type=str,
-        default='BIPED', help='Dataset used 4 training')
+        default='MDBD', help='Dataset used 4 training')
 
     parser.add_argument('--test_data', type=str,
-                        default='CLASSIC', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
+                        default='MDBD', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
     parser.add_argument('--cuda', type=bool, default=True,
                         help='whether use gpu to train network')
     # parser.add_argument('-c', '--cuda', action='store_true',
     #     help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
-    parser.add_argument('-m', '--model', type=str, default='params/bdcn_20000.pth',
+    parser.add_argument('-m', '--model', type=str, default='params/mdbdL_4000.pth',
         help='the model to test') # 'params/bdcn_3000.pth' 'params/bdcn_6000.pth' 'params/bdcn_pretrained_on_bsds500.pth'
     # 'params/bdcn_8000.pth'
     parser.add_argument('--res_dir', type=str, default='results',

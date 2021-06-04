@@ -1,9 +1,10 @@
 import os
 import cv2
 import numpy as np
-from PIL import Image
+# from PIL import Image
 import cv2 as cv
-import scipy.io as io
+import json
+# import scipy.io as io
 import torch
 from torch.utils import data
 import random
@@ -38,16 +39,29 @@ class Data(data.Dataset):
 		# self.files = np.loadtxt(lst_dir, dtype=str)
 		if self.lst is not None:
 			lst_dir = os.path.join(self.root, self.lst)
-			with open(lst_dir, 'r') as f:
-				self.files = f.readlines()
-				self.files = [line.strip().split(' ') for line in self.files]
-			if not self.is_train:
+			if self.dataset_name.lower()=='biped':
 
-				for i in range(len(self.files)):
-					folder, filename = os.path.split(self.files[i][0])
-					name, ext = os.path.splitext(filename)
-					self.images_name.append(name)
-					self.img_shape.append(None)
+				with open(lst_dir, 'r') as f:
+					self.files = f.readlines()
+					self.files = [line.strip().split(' ') for line in self.files]
+				if not self.is_train:
+
+					for i in range(len(self.files)):
+						folder, filename = os.path.split(self.files[i][0])
+						name, ext = os.path.splitext(filename)
+						self.images_name.append(name)
+						self.img_shape.append(None)
+			else:
+				with open(lst_dir) as f:
+					files = json.load(f)
+				self.files =[]
+				for pair in files:
+					tmp_img = pair[0]
+					tmp_gt = pair[1]
+					self.files.append(
+						(os.path.join(self.root, tmp_img),
+						 os.path.join(self.root, tmp_gt),))
+
 		else:
 			images_path = os.listdir(self.root)
 			labels_path = [None for i in images_path]
@@ -70,7 +84,7 @@ class Data(data.Dataset):
 		# load Image
 		if self.dataset_name.lower() =='biped':
 			base_im_dir = self.root+'imgs/train/' if self.is_train else self.root+'imgs/test/'
-			img_file = base_im_dir  + data_file[0]
+			img_file = base_im_dir + data_file[0]
 		else:
 			img_file = os.path.join(self.root,data_file[0])
 		# print(img_file)
@@ -83,13 +97,14 @@ class Data(data.Dataset):
 		if self.dataset_name.lower() =='biped':
 			base_gt_dir = self.root+'edge_maps/train/' if self.is_train else self.root+'edge_maps/test/'
 			gt_file  = base_gt_dir  + data_file[1]
+
 		else:
-			gt_file = self.root + data_file[1] if len(data_file)>1 else None
+			gt_file = data_file[1] if len(data_file)>1 else None
 		# gt = Image.open(gt_file)
 		if self.is_train:
 			gt = cv.imread(gt_file, cv.IMREAD_GRAYSCALE)
-			img = cv.resize(img,dsize=(400,400))
-			gt = cv.resize(gt,dsize=(400,400))
+			img = cv.resize(img,dsize=(500,500))  #500 for MDBD
+			gt = cv.resize(gt,dsize=(500,500))
 		else:
 			gt=None
 		return self.transform(img, gt)
@@ -103,6 +118,7 @@ class Data(data.Dataset):
 			gt /= 255.
 			if self.yita is not None:
 				gt[gt >= self.yita] = 1
+				gt = np.clip(gt,0.,1.)
 			gt = torch.from_numpy(np.array([gt])).float()
 		img = np.array(img, dtype=np.float32)
 		if self.rgb:
@@ -115,7 +131,7 @@ class Data(data.Dataset):
 				data.append(torch.from_numpy(img_scale.transpose((2,0,1))).float())
 			return data, gt
 		if not self.is_train and gt is None:
-			img = cv.resize(img,dsize=(2400,2400)) # just for Robert dataset
+			# img = cv.resize(img,dsize=(2400,2400)) # just for Robert dataset
 			gt = np.zeros((img.shape[:2]))
 			gt = torch.from_numpy(np.array([gt])).float()
 		img = img.transpose((2, 0, 1))
@@ -201,7 +217,7 @@ class Data_test(data.Dataset):
 		img -= self.mean_bgr
 
 		if gt is None:
-			img = cv.resize(img,dsize=(2400,2400)) # just for Robert dataset
+			# img = cv.resize(img,dsize=(2400,2400)) # just for Robert dataset
 			gt = np.zeros((img.shape[:2]))
 			gt = torch.from_numpy(np.array([gt])).float()
 		img = img.transpose((2, 0, 1))

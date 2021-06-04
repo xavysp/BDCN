@@ -22,7 +22,7 @@ def get_upsampling_weight(in_channels, out_channels, kernel_size):
     filt = (1 - abs(og[0] - center) / factor) * \
            (1 - abs(og[1] - center) / factor)
     weight = np.zeros((in_channels, out_channels, kernel_size, kernel_size),
-                      dtype=np.float64)
+                      dtype=np.float32)
     weight[range(in_channels), range(out_channels), :, :] = filt
     return torch.from_numpy(weight).float()
 
@@ -162,6 +162,7 @@ class BDCN(nn.Module):
         s51 = self.upsample_8_5(s51)
         # print(s51.data.shape)
         s51 = crop(s51, x, 0, 0)
+        # o1, o2, o3, o4, o5 = s1.detach(), s2.detach(), s3.detach(), s4.detach(), s5.detach()
         o1, o2, o3, o4, o5 = s1.detach(), s2.detach(), s3.detach(), s4.detach(), s5.detach()
         o11, o21, o31, o41, o51 = s11.detach(), s21.detach(), s31.detach(), s41.detach(), s51.detach()
         p1_1 = s1
