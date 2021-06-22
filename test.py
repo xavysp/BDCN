@@ -85,7 +85,9 @@ def main():
     device = torch.device('cpu' if torch.cuda.device_count() == 0 else 'cuda')
     # model = bdcn.BDCN()
     model = bdcn.BDCN().to(device)
-    model.load_state_dict(torch.load('%s' % (args.model),map_location=device))
+    model_dir = os.path.join('params',args.train_data,args.model)
+    model.load_state_dict(torch.load('%s' % (model_dir),map_location=device))
+    print("====== Checkpoint> ", model_dir,"==========")
     test(model, args, running_on=device)
 
 def parse_args():
@@ -96,14 +98,14 @@ def parse_args():
         default='MDBD', help='Dataset used 4 training')
 
     parser.add_argument('--test_data', type=str,
-                        default='MDBD', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
+                        default='NYUD', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
     parser.add_argument('--cuda', type=bool, default=True,
                         help='whether use gpu to train network')
     # parser.add_argument('-c', '--cuda', action='store_true',
     #     help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
-    parser.add_argument('-m', '--model', type=str, default='params/mdbdL_4000.pth',
+    parser.add_argument('-m', '--model', type=str, default='mdbd_4000.pth',
         help='the model to test') # 'params/bdcn_3000.pth' 'params/bdcn_6000.pth' 'params/bdcn_pretrained_on_bsds500.pth'
     # 'params/bdcn_8000.pth'
     parser.add_argument('--res_dir', type=str, default='results',
