@@ -95,17 +95,17 @@ def parse_args():
     parser.add_argument('-d', '--model_name', type=str,
                         default='BDCN', help='model name')
     parser.add_argument('--train_data', type=str,
-        default='MDBD', help='Dataset used 4 training')
+        default='BIPED', help='Dataset used 4 training')
 
     parser.add_argument('--test_data', type=str,
-                        default='NYUD', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
+                        default='BIPED', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
     parser.add_argument('--cuda', type=bool, default=True,
                         help='whether use gpu to train network')
     # parser.add_argument('-c', '--cuda', action='store_true',
     #     help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
-    parser.add_argument('-m', '--model', type=str, default='mdbd_4000.pth',
+    parser.add_argument('-m', '--model', type=str, default='bdcn_20000.pth',
         help='the model to test') # 'params/bdcn_3000.pth' 'params/bdcn_6000.pth' 'params/bdcn_pretrained_on_bsds500.pth'
     # 'params/bdcn_8000.pth'
     parser.add_argument('--res_dir', type=str, default='results',

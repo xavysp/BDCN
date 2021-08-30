@@ -124,6 +124,8 @@ def train(model, args, device='gpu'):
     visu_res = 'results/training'
     os.makedirs(visu_res,exist_ok=True)
     l_weights = [0.5, 0.5, 0.5,0.5, 0.5, 0.5,0.5, 0.5, 0.5,0.5, 1.1]
+    save_chkpt =os.path.join(args.param_dir,args.dataset)
+    os.makedirs(save_chkpt,exist_ok=True)
     for step in range(start_step, args.max_iter + 1):
         optimizer.zero_grad()
         batch_loss = 0
@@ -158,9 +160,9 @@ def train(model, args, device='gpu'):
         if step % args.step_size == 0:
             adjust_learning_rate(optimizer, step, args.step_size, args.gamma)
         if step % args.snapshots == 0 or step==5:
-            torch.save(model.state_dict(), '%s/bdcn_%d.pth' % (args.param_dir, step))
+            torch.save(model.state_dict(), '%s/bdcn_%d.pth' % (save_chkpt, step))
             state = {'step': step+1,'param':model.state_dict(),'solver':optimizer.state_dict()}
-            torch.save(state, '%s/bdcn_%d.pth.tar' % (args.param_dir, step))
+            torch.save(state, '%s/bdcn_%d.pth.tar' % (save_chkpt, step))
         if step % args.display == 0:
             tm = time.time() - start_time
             print('iter: %d, lr: %e, loss: %f, time using: %f(%fs/iter)' % (step,
@@ -211,7 +213,7 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description='Train BDCN for different args')
     parser.add_argument('-d', '--dataset', type=str, choices=cfg.config.keys(),
-        default='MDBD', help='The dataset to train') # cfg.config.keys()
+        default='BIPED', help='The dataset for training') # cfg.config.keys()
     parser.add_argument('--param-dir', type=str, default='params',
         help='the directory to store the params')
     parser.add_argument('--lr', dest='base_lr', type=float, default=1e-6,
