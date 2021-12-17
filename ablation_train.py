@@ -32,7 +32,7 @@ def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
     n, c, h, w = inputs.size()
 
     weights = np.zeros((n, c, h, w))
-    for i in xrange(n):
+    for i in range(n):
         t = targets[i, :, :, :].cpu().data.numpy()
         pos = (t == 1).sum()
         neg = (t == 0).sum()
@@ -44,15 +44,24 @@ def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
     if cuda:
         weights = weights.cuda()
     weights = Variable(weights)
-    inputs = F.sigmoid(inputs)
-    loss = nn.BCELoss(weights, size_average=False)(inputs, targets)
+    inputs = torch.sigmoid(inputs)
+    # loss = nn.BCELoss(weights, size_average=False)(inputs, targets)
+    loss = nn.BCELoss(weights, reduction='sum')(inputs, targets)
 
     return loss
+
+def count_parameters(model=None):
+    if model is not None:
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    else:
+        print("Error counting model parameters line 32 img_processing.py")
+        raise NotImplementedError
+
 
 def train(model, args):
     data_root = cfg.config[args.dataset]['data_root']
     data_lst = cfg.config[args.dataset]['data_lst']
-    if 'Multicue' in args.dataset:
+    if 'MDBD' in args.dataset:
         data_lst = data_lst % args.k
     mean_bgr = np.array(cfg.config[args.dataset]['mean_bgr'])
     yita = args.yita if args.yita else cfg.config[args.dataset]['yita']
@@ -112,7 +121,8 @@ def train(model, args):
     logger.info('*'*40)
     logger.info('train images in all are %d ' % iter_per_epoch)
     logger.info('*'*40)
-
+    chkpt_dir = os.path.join(args.param_dir,args.dataset+'-B'+str(args.block))
+    os.makedirs(chkpt_dir,exist_ok=True)
     start_time = time.time()
     if args.cuda:
         model.cuda()
@@ -123,10 +133,10 @@ def train(model, args):
         optimizer.load_state_dict(state['solver'])
     model.train()
     batch_size = args.iter_size * args.batch_size
-    for step in xrange(start_step, args.max_iter + 1):
+    for step in range(start_step, args.max_iter + 1):
         optimizer.zero_grad()
         batch_loss = 0
-        for i in xrange(args.iter_size):
+        for i in range(args.iter_size):
             if cur == iter_per_epoch:
                 cur = 0
                 data_iter = iter(trainloader)
@@ -140,7 +150,8 @@ def train(model, args):
                 loss += args.side_weight*cross_entropy_loss2d(out[k], labels, args.cuda, args.balance)/batch_size
             loss += args.fuse_weight*cross_entropy_loss2d(out[-1], labels, args.cuda, args.balance)/batch_size
             loss.backward()
-            batch_loss += loss.data[0]
+            # batch_loss += loss.data[0]
+            batch_loss += loss.data.T
             cur += 1
         # update parameter
         optimizer.step()
@@ -152,7 +163,7 @@ def train(model, args):
         if step % args.step_size == 0:
             adjust_learning_rate(optimizer, step, args.step_size)
         if step % args.snapshots == 0:
-            torch.save(model.state_dict(), '%s/bdcn_%d.pth' % (args.param_dir, step))
+            torch.save(model.state_dict(), '%s/bdcn_%d.pth' % (chkpt_dir, step))
             # state = {'step': step+1,'param':model.state_dict(),'solver':optimizer.state_dict()}
             # torch.save(state, '%s/bdcn_%d.pth.tar' % (args.param_dir, step))
         if step % args.display == 0:
@@ -175,10 +186,12 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     if not os.path.exists(args.param_dir):
         os.mkdir(args.param_dir)
-    torch.manual_seed(long(time.time()))
+    torch.manual_seed(time.time())
     model = ablation.BDCN(pretrain=args.pretrain, logger=logger,
         ms=args.ms, block=args.block, bdcn=not args.no_bdcn, direction=args.dir,
         k=args.num_conv, rate=args.rate)
+    res_model = count_parameters(model)
+    print('NUmber of parameters> ',res_model)
     if args.complete_pretrain:
         model.load_state_dict(torch.load(args.complete_pretrain))
     logger.info(model)
@@ -187,7 +200,7 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description='Train BDCN for different args')
     parser.add_argument('-d', '--dataset', type=str, choices=cfg.config.keys(),
-        default='bsds500', help='The dataset to train')
+        default='BIPED', help='The dataset to train')
     parser.add_argument('--param-dir', type=str, default='params',
         help='the directory to store the params')
     parser.add_argument('--lr', dest='base_lr', type=float, default=1e-6,
@@ -204,7 +217,7 @@ def parse_args():
         help='whether resume from some, default is None')
     parser.add_argument('-p', '--pretrain', type=str, default=None,
         help='init net from pretrained model default is None')
-    parser.add_argument('--max-iter', type=int, default=40000,
+    parser.add_argument('--max-iter', type=int, default=20001,
         help='max iters to train network, default is 40000')
     parser.add_argument('--iter-size', type=int, default=10,
         help='iter size equal to the batch size, default 10')
@@ -236,7 +249,7 @@ def parse_args():
         help='the loss weight of fuse, default 1.1')
     parser.add_argument('--ms', action='store_true',
         help='whether employ the ms blocks, default False')
-    parser.add_argument('--block', type=int, default=5,
+    parser.add_argument('--block', type=int, default=3,
         help='how many blocks of the model, default 5')
     parser.add_argument('--no-bdcn', action='store_true',
         help='whether to employ our policy to train the model, default False')
