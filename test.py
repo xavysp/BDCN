@@ -98,7 +98,7 @@ def parse_args():
         default='BIPED', help='Dataset used 4 training')
 
     parser.add_argument('--test_data', type=str,
-                        default='MDBD', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
+                        default='BIPED', help='The dataset 4 testing') #choices=cfg.config_test.keys(),
     parser.add_argument('--cuda', type=bool, default=True,
                         help='whether use gpu to train network')
     # parser.add_argument('-c', '--cuda', action='store_true',
