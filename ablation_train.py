@@ -239,8 +239,8 @@ def parse_args():
         help='batch size of one iteration, default 1')
     parser.add_argument('--crop-size', type=int, default=None,
         help='the size of image to crop, default not crop')
-    parser.add_argument('--yita', type=float, default=None,
-        help='the param to operate gt, default is data in the config file')
+    parser.add_argument('--yita', type=float, default=0.2,
+        help='BIPED/BRIND 0.2, MDBD= 0.4')
     parser.add_argument('--complete-pretrain', type=str, default=None,
         help='finetune on the complete_pretrain, default None')
     parser.add_argument('--side-weight', type=float, default=0.5,
