@@ -207,7 +207,7 @@ def parse_args():
         help='the base learning rate of model')
     parser.add_argument('-m', '--momentum', type=float, default=0.9,
         help='the momentum')
-    parser.add_argument('-c', '--cuda', action='store_true',
+    parser.add_argument('-c', '--cuda', type=bool,default=True,
         help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
         help='the gpu id to train net')
