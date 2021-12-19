@@ -70,8 +70,10 @@ def main():
 
 def parse_args():
     parser = argparse.ArgumentParser('test BDCN')
-    parser.add_argument('-d', '--dataset', type=str, choices=cfg.config_test.keys(),
-        default='bsds500', help='The dataset to train')
+    parser.add_argument('-d', '--test_data', type=str,
+        default='BIPED', help='The dataset to test')
+    parser.add_argument('-d', '--train_data', type=str,
+        default='BIPED', help='The dataset to train')
     parser.add_argument('-c', '--cuda', action='store_true',
         help='whether use gpu to train network')
     parser.add_argument('-g', '--gpu', type=str, default='0',
