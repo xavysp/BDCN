@@ -23,7 +23,7 @@ def adjust_learning_rate(optimizer, steps, step_size, gamma=0.1, logger=None):
             logger.info('%s: %s' % (param_group['name'], param_group['lr']))
 
 
-def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
+def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1, devi=None):
     """
     :param inputs: inputs is a 4 dimensional data nx1xhxw
     :param targets: targets is a 3 dimensional data nx1xhxw
@@ -41,9 +41,10 @@ def cross_entropy_loss2d(inputs, targets, cuda=False, balance=1.1):
         weights[i, t == 0] = pos * balance / valid
 
     weights = torch.Tensor(weights)
-    if cuda:
-        weights = weights.cuda()
-    weights = Variable(weights)
+    # if cuda:
+    #     weights = weights.cuda()
+    # weights = Variable(weights)
+    weights = weights.to(devi)
     inputs = torch.sigmoid(inputs)
     # loss = nn.BCELoss(weights, size_average=False)(inputs, targets)
     loss = nn.BCELoss(weights, reduction='sum')(inputs, targets)
@@ -58,7 +59,7 @@ def count_parameters(model=None):
         raise NotImplementedError
 
 
-def train(model, args):
+def train(model, args, devi=None):
     data_root = cfg.config[args.dataset]['data_root']
     data_lst = cfg.config[args.dataset]['data_lst']
     if 'MDBD' in args.dataset:
@@ -124,8 +125,8 @@ def train(model, args):
     chkpt_dir = os.path.join(args.param_dir,args.dataset+'-B'+str(args.block))
     os.makedirs(chkpt_dir,exist_ok=True)
     start_time = time.time()
-    if args.cuda:
-        model.cuda()
+    # if args.cuda:
+    #     model.cuda()
     if args.resume:
         logger.info('resume from %s' % args.resume)
         state = torch.load(args.resume)
@@ -141,14 +142,15 @@ def train(model, args):
                 cur = 0
                 data_iter = iter(trainloader)
             images, labels = next(data_iter)
-            if args.cuda:
-                images, labels = images.cuda(), labels.cuda()
-            images, labels = Variable(images), Variable(labels)
+            # if args.cuda:
+            #     images, labels = images.cuda(), labels.cuda()
+            images, labels = images.to(devi), labels.to(devi)
+            # images, labels = Variable(images), Variable(labels)
             out = model(images)
             loss = 0
             for k in range(len(out) - 1):
-                loss += args.side_weight*cross_entropy_loss2d(out[k], labels, args.cuda, args.balance)/batch_size
-            loss += args.fuse_weight*cross_entropy_loss2d(out[-1], labels, args.cuda, args.balance)/batch_size
+                loss += args.side_weight*cross_entropy_loss2d(out[k], labels, args.cuda, args.balance, devi=devi)/batch_size
+            loss += args.fuse_weight*cross_entropy_loss2d(out[-1], labels, args.cuda, args.balance, devi=devi)/batch_size
             loss.backward()
             # batch_loss += loss.data[0]
             batch_loss += loss.data.T
@@ -183,19 +185,21 @@ def main():
         logger.info(x+','+str(args.__dict__[x]))
     logger.info(cfg.config[args.dataset])
     logger.info('*'*80)
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    device = torch.device('cpu' if torch.cuda.device_count() == 0
+                          else 'cuda')
     if not os.path.exists(args.param_dir):
         os.mkdir(args.param_dir)
     torch.manual_seed(time.time())
     model = ablation.BDCN(pretrain=args.pretrain, logger=logger,
         ms=args.ms, block=args.block, bdcn=not args.no_bdcn, direction=args.dir,
-        k=args.num_conv, rate=args.rate)
+        k=args.num_conv, rate=args.rate).to(device)
     res_model = count_parameters(model)
-    print('NUmber of parameters> ',res_model)
+    print('Number of parameters> ',res_model)
     if args.complete_pretrain:
         model.load_state_dict(torch.load(args.complete_pretrain))
     logger.info(model)
-    train(model, args)
+    train(model, args, devi= device)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train BDCN for different args')
@@ -209,7 +213,7 @@ def parse_args():
         help='the momentum')
     parser.add_argument('-c', '--cuda', type=bool,default=True,
         help='whether use gpu to train network')
-    parser.add_argument('-g', '--gpu', type=str, default='0',
+    parser.add_argument('-g', '--gpu', type=str, default=None,
         help='the gpu id to train net')
     parser.add_argument('--weight-decay', type=float, default=0.0002,
         help='the weight_decay of net')
