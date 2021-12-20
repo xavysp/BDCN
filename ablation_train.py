@@ -171,7 +171,7 @@ def train(model, args, devi=None):
         if step % args.display == 0:
             tm = time.time() - start_time
             logger.info('iter: %d, lr: %e, loss: %f, time using: %f(%fs/iter)' % (step,
-                optimizer.param_groups[0]['lr'], np.mean(mean_loss), tm, tm/args.display))
+                optimizer.param_groups[0]['lr'], np.mean(mean_loss[0].numpy()), tm, tm/args.display))
             start_time = time.time()
 
 def main():
