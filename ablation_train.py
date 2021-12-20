@@ -158,9 +158,9 @@ def train(model, args, devi=None):
         # update parameter
         optimizer.step()
         if len(mean_loss) < args.average_loss:
-            mean_loss.append(batch_loss)
+            mean_loss.append(batch_loss.item())
         else:
-            mean_loss[pos] = batch_loss
+            mean_loss[pos] = batch_loss.item()
             pos = (pos + 1) % args.average_loss
         if step % args.step_size == 0:
             adjust_learning_rate(optimizer, step, args.step_size)
@@ -171,7 +171,7 @@ def train(model, args, devi=None):
         if step % args.display == 0:
             tm = time.time() - start_time
             logger.info('iter: %d, lr: %e, loss: %f, time using: %f(%fs/iter)' % (step,
-                optimizer.param_groups[0]['lr'], np.mean(mean_loss[0].numpy()), tm, tm/args.display))
+                optimizer.param_groups[0]['lr'], np.mean(mean_loss), tm, tm/args.display))
             start_time = time.time()
 
 def main():
