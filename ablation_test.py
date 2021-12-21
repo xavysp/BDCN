@@ -55,7 +55,7 @@ def test(model, args, device=None):
         cv2.imwrite(os.path.join(save_dir, 'fuse', '%s.png'%name), 255-t*255)
         all_t += time.time() - t1
 
-    print(all_t)
+    print("Total Time", all_t)
     print('Overall Time use: ', time.time() - start_time)
 
 def main():
