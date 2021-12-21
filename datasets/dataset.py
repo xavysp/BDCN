@@ -161,7 +161,7 @@ class Data_test(data.Dataset):
 		self.images_name = []
 		self.img_shape = []
 		# self.files = np.loadtxt(lst_dir, dtype=str)
-		if self.lst is not None:
+		if dataset_name is not 'BRIND':
 			lst_dir = os.path.join(self.root, self.lst)
 			with open(lst_dir, 'r') as f:
 				self.files = f.readlines()
@@ -172,7 +172,22 @@ class Data_test(data.Dataset):
 				name, ext = os.path.splitext(filename)
 				self.images_name.append(name)
 				self.img_shape.append(None)
+		elif dataset_name is 'BRIND':
+			lst_dir = os.path.join(self.root, self.lst)
+			self.files = []
+			with open(lst_dir) as f:
+				files = json.load(f)
+			for pair in files:
+				tmp_img = pair[0]
+				tmp_gt = pair[1]
+				_,name_file = os.path.split(tmp_img)
+				name, ext = os.path.splitext(name_file)
+				self.images_name.append(name)
+				self.files.append(
+					(tmp_img,
+					 tmp_gt,))
 		else:
+
 			images_path = os.listdir(self.root)
 			labels_path = [None for i in images_path]
 			self.files = [images_path, labels_path]
