@@ -10,8 +10,8 @@ import re
 import os
 import sys
 import ablation
-from datasets.dataset import Data
-import cfg
+from datasets.dataset2 import Data
+import cfg2 as cfg
 import log
 
 def adjust_learning_rate(optimizer, steps, step_size, gamma=0.1, logger=None):
@@ -62,12 +62,14 @@ def count_parameters(model=None):
 def train(model, args, devi=None):
     data_root = cfg.config[args.dataset]['data_root']
     data_lst = cfg.config[args.dataset]['data_lst']
-    if 'MDBD' in args.dataset:
-        data_lst = data_lst % args.k
+    #if 'MDBD' in args.dataset:
+     #   data_lst = data_lst % args.k
     mean_bgr = np.array(cfg.config[args.dataset]['mean_bgr'])
     yita = args.yita if args.yita else cfg.config[args.dataset]['yita']
     crop_size = args.crop_size
-    train_img = Data(data_root, data_lst, yita, mean_bgr=mean_bgr, crop_size=crop_size)
+    train_img = Data(
+        data_root, data_lst, yita, mean_bgr=mean_bgr, crop_size=crop_size,
+        dataset_name=args.dataset)
     trainloader = torch.utils.data.DataLoader(train_img,
         batch_size=args.batch_size, shuffle=True, num_workers=5)
     params_dict = dict(model.named_parameters())
@@ -204,7 +206,7 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description='Train BDCN for different args')
     parser.add_argument('-d', '--dataset', type=str, choices=cfg.config.keys(),
-        default='BIPED', help='The dataset to train')
+        default='MDBD', help='The dataset to train')
     parser.add_argument('--param-dir', type=str, default='params',
         help='the directory to store the params')
     parser.add_argument('--lr', dest='base_lr', type=float, default=1e-6,
